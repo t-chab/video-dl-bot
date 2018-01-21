@@ -11,12 +11,12 @@ Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
 
+import logging
 import os
 import uuid
 
 import youtube_dl
-from telegram.ext import Updater, CommandHandler
-import logging
+from telegram.ext import Updater, CommandHandler, run_async
 
 # Name of the environment variable which defines the bot token
 TOKEN_ENV_NAME = 'VIDEO_DL_BOT_TOKEN'
@@ -33,6 +33,7 @@ def show_help(bot, update):
     update.message.reply_text('Usage /dl [url]')
 
 
+@run_async
 def download(bot, update, args):
     logger.info('args: "%s"', args)
     url = args[0]
@@ -77,7 +78,7 @@ def main():
         logger.fatal('Can\'t find bot token in environement variable "%s"', TOKEN_ENV_NAME)
         return 1
 
-    updater = Updater(token)
+    updater = Updater(token, workers=32)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
