@@ -1,9 +1,13 @@
 FROM tchabaud/alpine-base
 
-RUN apk --update add ffmpeg python3 \
-    && pip3 install -U youtube-dl python-telegram-bot
+COPY requirements.txt /opt/
 
-ADD ./main.py /opt/main.py
+RUN apk --update add --virtual build-deps python3-dev gcc musl-dev \
+    && apk --update add ffmpeg python3 \
+    && pip3 install -U -r /opt/requirements.txt \
+    && apk del build-deps
+
+COPY ./main.py /opt/main.py
 
 RUN chmod a+x /opt/main.py
 

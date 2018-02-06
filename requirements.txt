@@ -1,0 +1,4 @@
+youtube-dl
+python-telegram-bot
+proxybroker
+tenacity
