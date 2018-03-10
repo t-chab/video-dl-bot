@@ -1,6 +1,7 @@
 FROM tchabaud/alpine-base
 
 COPY requirements.txt /opt/
+COPY entrypoint.sh /opt/
 
 RUN apk --update add --virtual build-deps python3-dev gcc musl-dev \
     && apk --update add ffmpeg python3 \
@@ -8,8 +9,9 @@ RUN apk --update add --virtual build-deps python3-dev gcc musl-dev \
     && apk del build-deps
 
 COPY ./main.py /opt/main.py
+COPY ./proxy.py /opt/proxy.py
 
-RUN chmod a+x /opt/main.py
+RUN chmod a+x /opt/*
 
 USER docker
-ENTRYPOINT [ "/opt/main.py" ]
+ENTRYPOINT [ "/opt/entrypoint.sh" ]

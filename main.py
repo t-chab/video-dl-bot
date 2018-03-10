@@ -2,26 +2,22 @@
 # -*- coding: utf-8 -*-
 
 """Simple Bot to fetch video and upload them to telegram.
-This Bot uses the Updater class to handle the bot.
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
 Usage:
 Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
 
-import asyncio
 import base64
-import concurrent
 import glob
 import logging
 import os
+import sys
+import urllib
 import uuid
 
+import pycountry as pycountry
 import tenacity
 import youtube_dl
-from proxybroker import Broker
 from telegram.ext import Updater, CommandHandler, run_async
 
 # Name of the environment variable which defines the bot token
@@ -36,8 +32,11 @@ VIDEO_FILE_PREFIX = 'tgbot_'
 # File suffix to indicate it's finished
 FINISHED_PATTERN = 'tgok'
 
-# Proxy
-GEO_BLOCK_PROXY = ['']
+# Proxy Web service which provide useable open proxy addresses
+PROXY_WS_HOST = '127.0.0.1'
+PROXY_WS_PORT = 5000
+
+UPLOAD_TIMEOUT = 999
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -53,25 +52,45 @@ def show_help(bot, update):
 
 @run_async
 def download(bot, update, args):
-    logger.info('args: "%s"', args)
+    logger.info('%s - args: "%s"', sys._getframe().f_code.co_name, args)
     url = args[0]
     file_prefix = VIDEO_DL_DIR + VIDEO_FILE_PREFIX
-    video_file = file_prefix \
-                 + base64.b64encode(bytes(str(update.message.chat_id), 'ascii')).decode('ascii') \
-                 + '_' + str(uuid.uuid4()) + '.mp4'
+    encoded_chat_id = bytes(str(update.message.chat_id), 'ascii')
+    video_file = file_prefix + base64.urlsafe_b64encode(encoded_chat_id).decode('ascii') \
+                 + '_' \
+                 + str(uuid.uuid4()) \
+                 + '.mp4'
     try:
-        ydl_opts = ytdl_config(video_file)
-        ytdl_download(url, video_file, ydl_opts)
+        ydl_opts = ytdl_config(video_file, dl_proxy='')
+        ytdl_download(url, video_file=video_file, ydl_opts=ydl_opts)
     except Exception as e:
         logger.fatal('Download failed: %s, retrying with proxy ...', e)
         ytdl_with_proxy(url, video_file)
 
 
+@run_async
+def proxy(bot, update, args):
+    logger.info('%s - args: "%s"', sys._getframe().f_code.co_name, args)
+    country = pycountry.countries.lookup(args[0]) or 'FR'
+    result = urllib.request.urlopen('http://'
+                                    + PROXY_WS_HOST
+                                    + ':' + str(PROXY_WS_PORT)
+                                    + '/update?country=' + country.alpha_2).read()
+    bot.sendMessage(chat_id=update.message.chat_id, text=str(result))
+
+
+def get_proxy_country_code():
+    return urllib.request.urlopen('http://'
+                                  + PROXY_WS_HOST
+                                  + ':' + str(PROXY_WS_PORT)
+                                  + '/').read()
+
+
 @tenacity.retry
 def ytdl_with_proxy(url, video_file):
-    fill_proxy()
-    logger.info('New proxy selected: %s', GEO_BLOCK_PROXY[0])
-    ydl_opts = ytdl_config(video_file, proxy=GEO_BLOCK_PROXY[0])
+    country_code = get_proxy_country_code()
+    logger.info('New proxy selected: %s', country_code)
+    ydl_opts = ytdl_config(video_file, dl_proxy=country_code)
     ytdl_download(url, video_file, ydl_opts)
 
 
@@ -85,7 +104,7 @@ def ytdl_download(url, video_file, ydl_opts):
         logger.info('Video file renamed to "%s"', final_name)
 
 
-def ytdl_config(video_file, proxy=''):
+def ytdl_config(video_file, dl_proxy=''):
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': VIDEO_DL_DIR + '%(id)s',
@@ -102,45 +121,19 @@ def ytdl_config(video_file, proxy=''):
         }],
         'addmetadata': True,
         'xattrs': True,
-        'proxy': proxy,
+        'proxy': dl_proxy,
         'geo_bypass': True,
+        'continuedl': True,
+        'fragment_retries': 10,
         'verbose': True
     }
+
     return ydl_opts
 
 
 def get_finished_name(filename):
     name, ext = os.path.splitext(filename)
     return "{name}_{ok}{ext}".format(name=name, ok=FINISHED_PATTERN, ext=ext)
-
-
-async def handle(proxies):
-    while True:
-        proxy = await proxies.get()
-        if proxy is None:
-            break
-        GEO_BLOCK_PROXY[0] = proxy.host + ':' + str(proxy.port)
-        logger.info('Found following proxy : %s', GEO_BLOCK_PROXY[0])
-
-
-def fill_proxy():
-    loop = asyncio.get_event_loop()
-    executor = concurrent.futures.ThreadPoolExecutor(5)
-    loop.set_default_executor(executor)
-    proxies = asyncio.Queue(loop=loop)
-    broker = Broker(proxies, loop=loop)
-    tasks = [handle(proxies), broker.find(types=['HTTP', 'HTTPS', 'CONNECT:80'], countries=['FR'], limit=1)]
-    try:
-        if tasks:
-            loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
-        else:
-            loop.run_forever()
-    except KeyboardInterrupt:
-        broker.stop()
-    finally:
-        loop.stop()
-        executor.shutdown(wait=True)
-        loop.close()
 
 
 def send_file(bot, job):
@@ -152,7 +145,7 @@ def send_file(bot, job):
         chat = int(base64.b64decode(encoded_chat).decode('ascii'))
         try:
             logger.info('Uploading "%s" to chat "%s"', file, chat)
-            bot.sendVideo(chat_id=chat, video=open(file, 'rb'))
+            bot.sendVideo(chat_id=chat, video=open(file, 'rb'), timeout=UPLOAD_TIMEOUT)
             logger.info('File "%s" sent successfully !', file)
             clean(file)
         except Exception as e:
@@ -178,9 +171,6 @@ def main():
         logger.fatal('Can\'t find bot token in environment variable "%s"', TOKEN_ENV_NAME)
         return 1
 
-    # Fetching proxy
-    fill_proxy()
-
     updater = Updater(token, workers=32)
 
     # Get the job queues, to send files every 30s if needed
@@ -194,6 +184,7 @@ def main():
     # Map commands
     dp.add_handler(CommandHandler("help", show_help))
     dp.add_handler(CommandHandler("dl", download, pass_args=True))
+    dp.add_handler(CommandHandler("proxy", proxy, pass_args=True))
 
     # log all errors
     dp.add_error_handler(error)
