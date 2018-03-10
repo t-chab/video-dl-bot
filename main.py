@@ -18,6 +18,7 @@ import uuid
 import pycountry as pycountry
 import validators
 import youtube_dl
+from telegram import ParseMode
 from telegram.ext import Updater, CommandHandler, run_async
 
 # Name of the environment variable which defines the bot token
@@ -47,13 +48,13 @@ logger = logging.getLogger(__name__)
 
 def show_help(bot, update):
     """Send a message when the command /help is issued."""
-    update.message.reply_text("""Available commands : 
+    update.message.reply_text(text="""*Available commands* : 
                                  - Download video : /dl [url]
                                  - Download video using a proxy to bypass geo-restriction : /dlp [url]
                                  - Update proxy : /proxy [country_code]
                                  - Make gif from video : /gif [url]
                                  - Get mp3 from video : /mp3 [url]
-                                 """)
+                                 """, parse_mode=ParseMode.MARKDOWN)
 
 
 @run_async
