@@ -91,7 +91,11 @@ def mp3(bot, update, args):
 @run_async
 def proxy(bot, update, args):
     logger.info('%s - args: "%s"', sys._getframe().f_code.co_name, args)
-    country = pycountry.countries.lookup(args[0]) or 'FR'
+    try:
+        country = pycountry.countries.lookup(args[0])
+    except Exception as e:
+        logger.error('Can\'t parse provided country code, using default.')
+        country = 'FR'
     request = urllib.request.urlopen('http://'
                                      + PROXY_WS_HOST
                                      + ':' + str(PROXY_WS_PORT)
