@@ -92,11 +92,11 @@ def mp3(bot, update, args):
 def proxy(bot, update, args):
     logger.info('%s - args: "%s"', sys._getframe().f_code.co_name, args)
     country = pycountry.countries.lookup(args[0]) or 'FR'
-    result = urllib.request.urlopen('http://'
-                                    + PROXY_WS_HOST
-                                    + ':' + str(PROXY_WS_PORT)
-                                    + '/update?country=' + country.alpha_2).read()
-    bot.sendMessage(chat_id=update.message.chat_id, text=result.decode('utf-8'))
+    result = str(urllib.request.urlopen('http://'
+                                        + PROXY_WS_HOST
+                                        + ':' + str(PROXY_WS_PORT)
+                                        + '/update?country=' + country.alpha_2).read())
+    bot.sendMessage(chat_id=update.message.chat_id, text=result)
 
 
 def download_url(bot, telegram_chat, url, output_gif=False, output_type='mp4', with_proxy=False):
@@ -131,10 +131,10 @@ def download_url(bot, telegram_chat, url, output_gif=False, output_type='mp4', w
 
 
 def get_proxy():
-    return urllib.request.urlopen('http://'
-                                  + PROXY_WS_HOST
-                                  + ':' + str(PROXY_WS_PORT)
-                                  + '/').read()
+    return str(urllib.request.urlopen('http://'
+                                      + PROXY_WS_HOST
+                                      + ':' + str(PROXY_WS_PORT)
+                                      + '/').read())
 
 
 def ytdl_download(url, video_file, ydl_opts):
