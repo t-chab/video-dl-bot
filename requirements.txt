@@ -1,6 +1,6 @@
 youtube-dl
 python-telegram-bot
 proxybroker
-tenacity
 quart
 pycountry
+validators
