@@ -158,12 +158,12 @@ def ytdl_download(url, video_file, ydl_opts):
 def ytdl_config(video_file, is_gif=False, is_mp3=False, dl_proxy=''):
     ffmpeg_cmd = "ffmpeg -i {} -y -vcodec libx264 -crf 23 -vprofile baseline " \
                  + "-b:v 500k -maxrate 500k -bufsize 800k -vf scale=-2:480 -level 3.0 " \
-                 + "-threads 0 -pix_fmt yuv420p -codec:a aac -ac 2 -strict experimental " \
+                 + "-threads 0 -pix_fmt yuv420p -codec:a aac -ac 2 " \
                  + "-ab 128k -movflags +faststart " + video_file
     if is_gif:
         ffmpeg_cmd = "ffmpeg -i {} -y -vcodec libx264 -crf 23 -vprofile baseline " \
                      + "-b:v 500k -maxrate 500k -bufsize 800k -vf scale=-2:480 -level 3.0 " \
-                     + "-threads 0 -pix_fmt yuv420p -an -strict experimental " \
+                     + "-threads 0 -pix_fmt yuv420p -an " \
                      + "-movflags +faststart " + video_file
     if is_mp3:
         ffmpeg_cmd = "ffmpeg -i {} -y -vn -ac 2 -f mp3 " + video_file
@@ -171,7 +171,7 @@ def ytdl_config(video_file, is_gif=False, is_mp3=False, dl_proxy=''):
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': VIDEO_DL_DIR + '%(id)s',
         # Workaround for https://github.com/rg3/youtube-dl/issues/11348
-        'postprocessor_args': ['-bsf:a', 'aac_adtstoasc'],
+        # 'postprocessor_args': ['-bsf:a', 'aac_adtstoasc'],
         'postprocessors': [{
             'key': 'ExecAfterDownload',
             # see https://ffmpeg.org/ffmpeg-filters.html#scale
