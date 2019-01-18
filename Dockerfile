@@ -1,7 +1,9 @@
-FROM tchabaud/alpine-base
+FROM python:alpine
 
 COPY requirements.txt /opt/
 COPY entrypoint.sh /opt/
+
+RUN addgroup -g 5000 dckrusers && adduser -S -s /sbin/nologin -u 5000 -G dckrusers docker
 
 RUN apk --update add --virtual build-deps python3-dev gcc musl-dev libressl-dev libffi-dev \
     && apk --update add ffmpeg python3 libffi libressl \
