@@ -157,7 +157,7 @@ def ytdl_download(url, video_file, ydl_opts):
 
 def ytdl_config(video_file, is_gif=False, is_mp3=False, dl_proxy=''):
     ffmpeg_cmd = "ffmpeg -i {} -y -vcodec libx264 -crf 23 -vprofile baseline -level 3.0 -refs 1 " \
-                 + "-b:v 500k -maxrate 500k -bufsize 800k -vf scale=w=640:h=480:force_original_aspect_ratio=decrease " \
+            + "-b:v 500k -maxrate 500k -bufsize 800k -vf scale=-2:480:force_original_aspect_ratio=decrease " \
                  + "-threads 0 -pix_fmt yuv420p -codec:a aac -ac 2 " \
                  + "-ab 128k -movflags +faststart " + video_file
     if is_gif:
